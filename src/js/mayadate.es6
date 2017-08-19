@@ -7,7 +7,7 @@
  */
 
 class MayaDate {
-    /**
+	/**
 	 * Class constructor
 	 */
 	constructor() {
@@ -51,13 +51,13 @@ class MayaDate {
 		return this.lastmoddate.toLocaleString();
 	}
 
-    /**
-     * Julian date calculation
-     * @param  integer                      mm                                  Month number in Gregorian calendar
-     * @param  integer                      dd                                  Day number in Gregorian calendar
-     * @param  integer                      yyyy                                Year number in Gregorian calendar
-     * @return {[type]}      The Julian day
-     */
+	/**
+	 * Julian date calculation
+	 * @param  integer					  mm									Month number in Gregorian calendar
+	 * @param  integer					  dd									Day number in Gregorian calendar
+	 * @param  integer					  yyyy									Year number in Gregorian calendar
+	 * @return {[type]}	  The Julian day
+	 */
 	julday(mm, dd, yyyy){
 		let julian_month, julian_year, ja, julian_date;
 		if(mm === undefined){
@@ -79,10 +79,10 @@ class MayaDate {
 		return julian_date;
 	}
 
-    /**
-     * 819 Day station for 0.0.0.0.0
-     * @return integer
-     */
+	/**
+	 * 819 Day station for 0.0.0.0.0
+	 * @return integer
+	 */
 	st819() {
 		let c = 1,
 			e = 3,
@@ -106,10 +106,10 @@ class MayaDate {
 		return e;
 	}
 
-    /**
-     * Trecena
-     * @return integer                                                          A number representing the position in the tzolk'in (a number ranging from 0 to 259) from the given values of the trecena T and veintena V.
-     */
+	/**
+	 * Trecena
+	 * @return integer															A number representing the position in the tzolk'in (a number ranging from 0 to 259) from the given values of the trecena T and veintena V.
+	 */
 	p260() {
 		let c12 = -3,
 			m1 = 13,
@@ -127,16 +127,16 @@ class MayaDate {
 		return u;
 	}
 
-    /**
-     * MayaDate
-     */
+	/**
+	 * MayaDate
+	 */
 	mayaDate(aDate) {
 		let tmp,
 			correlation = 584285;
 
 		this.tzolkinDays = ["\’Ahaw", "\’Imix", "\’Ik\’", "Ak\’bal", "K\’an", "Chik\’chan", "Kimi", "Manik\’", "Lamat", "Muluk", "Ok", "Chuwen", "\’Eb", "Ben", "\’Ix", "Men", "K\’ib", "Kaban", "\’Etz\’nab", "Kawak"];
 		this.haabMonths = ["Pohp", "Wo", "Sip", "Sots", "Sek", "Xul", "Yaxk\’in", "Mol", "Ch\’en", "Yax", "Sac", "Keh", "Mak", "K\’ank\’in", "Muwan", "Pax", "K\’ayab", "Kumk\’u", "Wayeb"];
-        //    0   1   2   3   4   5   6   7   8   9  10 11
+		//	0   1   2   3   4   5   6   7   8   9  10 11
 		this._l819coefs = [360, 648, 675, 396, 549, 333, 108, 522, 612, 774, 738, 18];
 		if(aDate !== undefined) {
 			this.lastmod = 0;
