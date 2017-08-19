@@ -3,7 +3,7 @@
 /**
  *  A collection of Javascript utilities for the Mayan Calendar
  *  Based on the work of God N Locomotive Works & Ivan Van Laningham
- *  @see view-source:http://www.pauahtun.org/Calendar/mayadate.js
+ *  @see http://www.pauahtun.org/Calendar/mayadate.js
  */
 
 class MayaDate {
