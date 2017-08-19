@@ -2,7 +2,7 @@
 A Maya date calculator
 
 ## Install Dev
-With a terminal, in the root path, execute this code:
+In a terminal, in the root path, execute this code:
 ``` shell
 $ npm install
 ```
