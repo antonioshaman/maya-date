@@ -10,6 +10,7 @@ then launch grunt with this command:
 ``` shell
 $ grunt watch
 ```
+----
 
 Now, in a browser, the console will report the current Maya date.
 ``` text
