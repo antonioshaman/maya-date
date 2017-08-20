@@ -1,7 +1,13 @@
 # MayaDate
 A Maya date calculator built in EcmaScript6
 
-## Install Dev
+
+## Install with Bower
+``` shell
+$ bower install MayaDate
+```
+
+## Install Dev dependencies
 In a terminal, in the root path, execute this code:
 ``` shell
 $ npm install
