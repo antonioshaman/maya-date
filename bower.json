@@ -1,0 +1,21 @@
+{
+  "name": "MayaDate",
+  "description": "A Maya date calculator built in EcmaScript6",
+  "main": "dist/main.min.js",
+  "authors": [
+    "Alessandro Gubitosi <gubi.ale@iod.io>"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "Maya",
+    "calendar"
+  ],
+  "homepage": "https://github.com/gubi/MayaDate",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
