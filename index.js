@@ -1,8 +1,30 @@
 const express = require('express');
-const MayaDate = require('./MayaDate');
-
 const app = express();
 const port = process.env.PORT || 3000;
+
+// === 1) JD ===
+function gregorianToJD(year, month, day) {
+  if (month <= 2) {
+    year -= 1;
+    month += 12;
+  }
+  const A = Math.floor(year / 100);
+  const B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (year + 4716))
+       + Math.floor(30.6001 * (month + 1))
+       + day + B - 1524.5;
+}
+
+// === 2) Days Out Of Time ===
+function countDaysOutOfTime(startYear, targetYear, month, day) {
+  let count = 0;
+  for (let y = startYear; y < targetYear; y++) {
+    if (month > 7 || (month === 7 && day > 25)) {
+      count++;
+    }
+  }
+  return count;
+}
 
 const SEALS_RU = [
   {
@@ -187,52 +209,41 @@ const SEALS_RU = [
     }
 ];
 
+// === 4) Main Route ===
 app.get('/calculate-kin', (req, res) => {
   const dateStr = req.query.date;
-  if (!dateStr) {
-    return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
-  }
+  if (!dateStr) return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
 
-  const date = new Date(dateStr);
-  if (isNaN(date)) {
-    return res.status(400).json({ error: "Неверный формат даты" });
-  }
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const jd = gregorianToJD(year, month, day);
 
-  const maya = new MayaDate(date);
-  
-  const kinNumber = ((maya.mayaday % 260) + 260) % 260 + 1;
+  const correlation = 584283; // Или +1 или +2 если нужно идеально подогнать yamaya.ru
+  const startYear = -3113;
+
+  const daysOutOfTime = countDaysOutOfTime(startYear, year, month, day);
+  const daysSinceCreation = Math.floor(jd - correlation) - daysOutOfTime;
+
+  const kinNumber = ((daysSinceCreation % 260) + 260) % 260 + 1;
   const toneNumber = ((kinNumber - 1) % 13) + 1;
   const sealIndex = ((kinNumber - 1) % 20);
   const sealData = SEALS_RU[sealIndex];
 
   res.json({
     input: dateStr,
-    kin: {
-      number: kinNumber,
-      tone: toneNumber,
-      seal: {
-        name: sealData.name,
-        short: sealData.short,
-        description: sealData.desc,
-        chakra: sealData.chakra,
-        finger: sealData.finger,
-        direction: sealData.direction,
-        motto: sealData.motto
-      }
-    },
-    longCount: maya.LongCount(),
-    haab: {
-      month: maya.haabMonths[maya.haabmonth],
-      day: maya.haabday
-    },
-    lordOfTheNight: maya.glord
+    jd,
+    daysSinceCreation,
+    daysOutOfTime,
+    kin: kinNumber,
+    tone: toneNumber,
+    seal: sealData
   });
 });
 
+// === 5) Root ===
 app.get('/', (req, res) => {
-  res.send('✨ MayaDate API 🇲🇽 запущен! Используй: /calculate-kin?date=YYYY-MM-DD');
+  res.send('✨ Maya Kin API — используй ?date=YYYY-MM-DD');
 });
 
 app.listen(port, () => {
-  console.log(`✅ MayaDate API listening on port ${port}`);
+  console.log(`✅ Maya Kin API on port ${port}`);
 });
