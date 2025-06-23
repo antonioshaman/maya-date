@@ -1,5 +1,5 @@
 const express = require('express');
-const MayaDate = require('./src/js/MayaDate'); // путь к исходнику
+const MayaDate = require('./MayaDate'); // ✅ теперь точно работает!
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -19,14 +19,13 @@ app.get('/calculate-kin', (req, res) => {
 
   res.json({
     input: dateStr,
-    longCount: maya.longCount,
-    tzolkin: maya.tzolkin,
-    haab: maya.haab
+    longCount: maya.LongCount(),
+    trecena: maya.trecena,
+    tzolkin: maya.tzolkinDays[maya.veintena],
+    haabMonth: maya.haabMonths[maya.haabmonth],
+    haabDay: maya.haabday,
+    glord: maya.glord
   });
-});
-
-app.get('/', (req, res) => {
-  res.send('MayaDate API is working! Use /calculate-kin?date=YYYY-MM-DD');
 });
 
 app.listen(port, () => {
