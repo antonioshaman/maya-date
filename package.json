@@ -1,7 +1,6 @@
 {
-  "name": "maya-date-api",
+  "name": "maya-kin-api",
   "version": "1.0.0",
-  "description": "REST API for Maya Date",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
