@@ -199,10 +199,11 @@ app.get('/calculate-kin', (req, res) => {
   }
 
   const maya = new MayaDate(date);
-
+  
   const kinNumber = ((maya.mayaday % 260) + 260) % 260 + 1;
   const toneNumber = ((kinNumber - 1) % 13) + 1;
-  const sealData = SEALS_RU[(kinNumber - 1) % 20];
+  const sealIndex = ((kinNumber - 1) % 20);
+  const sealData = SEALS_RU[sealIndex];
 
   res.json({
     input: dateStr,
