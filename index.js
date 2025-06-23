@@ -1,5 +1,5 @@
 const express = require('express');
-const MayaDate = require('./lib/MayaDate'); // путь к исходнику
+const MayaDate = require('./src/js/MayaDate'); // путь к исходнику
 
 const app = express();
 const port = process.env.PORT || 3000;
