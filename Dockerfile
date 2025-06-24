@@ -1,25 +1,17 @@
-# ✅ База: Playwright с Node и Python
-FROM mcr.microsoft.com/playwright:v1.44.0-jammy
+# ✅ Лёгкий базовый образ Node LTS
+FROM node:18-alpine
 
 # 📁 Рабочая директория
 WORKDIR /app
 
-# 🔑 Копируем package.json/package-lock.json для npm install отдельно
+# 📦 Устанавливаем только Node зависимости
 COPY package*.json ./
-
-# 📦 Устанавливаем Node зависимости
 RUN npm install
 
 # 📁 Копируем всё остальное
 COPY . .
 
-# 🐍 Обновляем pip и ставим Python Playwright
-RUN apt-get update && apt-get install -y python3-pip && \
-    pip3 install --upgrade pip && \
-    pip3 install playwright && \
-    python3 -m playwright install
-
-# ✅ Разрешаем порт
+# ✅ Открываем порт
 EXPOSE 3000
 
 # 🚀 Стартуем
