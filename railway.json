@@ -3,7 +3,8 @@
     "nixpacks": {
       "plan": {
         "providers": ["node"]
-      }
+      },
+      "builder": "NIXPACKS"
     }
   },
   "deploy": {
