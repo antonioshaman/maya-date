@@ -7,7 +7,7 @@
     }
   },
   "deploy": {
-    "startCommand": "node index.js"
+    "startCommand": "node index.cjs"
   },
   "plugins": [],
   "env": {
