@@ -243,33 +243,29 @@ app.get('/calculate-kin', (req, res) => {
   if (!dateStr) return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
 
   const [year, month, day] = dateStr.split('-').map(Number);
-  const jd = gregorianToJD(year, month, day);
 
-  const correlation = 584283;
+  // JD только для Days diff
+  const jdInput = gregorianToJD(year, month, day);
+  const jdEpoch = gregorianToJD(1987, 7, 26);
+  const days = Math.floor(jdInput - jdEpoch);
 
-  // Академический Long Count
-  const kinAcad = ((Math.floor(jd - correlation) % 260) + 260) % 260 + 1;
-
-  // Days Out Of Time + Leap day
-  const shift = countSpecialDays(year, month, day);
-
-  // Dreamspell = академический - shift
-  let kinNumber = ((kinAcad - shift - 1) % 260 + 260) % 260 + 1;
+  // Главный Dreamspell Kin
+  const kinNumber = ((days + 34 - 1) % 260 + 260) % 260 + 1;
   const toneNumber = ((kinNumber - 1) % 13) + 1;
   const sealIndex = ((kinNumber - 1) % 20);
   const sealData = SEALS_RU[sealIndex];
 
   res.json({
     input: dateStr,
-    jd: jd,
-    correlation,
-    kinAcad,
-    shift,
+    jd: jdInput,
+    jdEpoch,
+    daysSinceEpoch: days,
     kin: kinNumber,
     tone: toneNumber,
     seal: sealData
   });
 });
+
 
 // === 5) Root ===
 app.get('/', (req, res) => {
