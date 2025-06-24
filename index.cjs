@@ -1,11 +1,9 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
+const SEALS_RU = require('./seals_ru.json');
 
 const app = express();
 const port = process.env.PORT || 3000;
-
-// === Твои SEALS_RU ===
-const SEALS_RU = require('./seals_ru.json'); // вынеси в отдельный файл или вставь прямо здесь, если хочешь.
 
 // === Gregorian to JD ===
 function gregorianToJD(year, month, day) {
@@ -42,7 +40,6 @@ async function parseYamaya(year, month, day) {
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "networkidle2" });
 
-  // Ждём появления ключевого слова
   const bodyText = await page.evaluate(() => document.body.innerText);
 
   await browser.close();
@@ -50,7 +47,6 @@ async function parseYamaya(year, month, day) {
   const kinMatch = bodyText.match(/Кин:\s*(\d+)/);
   const kin = kinMatch ? parseInt(kinMatch[1]) : null;
 
-  // Аналогично можешь вытащить Тон и Печать:
   const toneMatch = bodyText.match(/Тон.*?:\s*(.*?)\n/);
   const tone = toneMatch ? toneMatch[1].trim() : null;
 
