@@ -8,3 +8,5 @@ RUN npm install
 EXPOSE 3000
 
 CMD ["npm", "start"]
+
+RUN pip install playwright && python3 -m playwright install
