@@ -1,10 +1,9 @@
 const express = require("express");
 const puppeteer = require("puppeteer");
-
 const app = express();
 const port = process.env.PORT || 3000;
 
-// === SEALS ===
+// === SEALS TABLE ===
 const SEALS_RU = [
     {
       "name": "Красный Дракон (Имиш)",
@@ -188,66 +187,91 @@ const SEALS_RU = [
     }
 ];
 
-// === JD ===
+
+// === JD + LOCAL KIN ===
 function gregorianToJD(year, month, day) {
-  if (month <= 2) {
-    year -= 1;
-    month += 12;
-  }
+  if (month <= 2) { year -= 1; month += 12; }
   const A = Math.floor(year / 100);
   const B = 2 - A + Math.floor(A / 4);
   return Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + B - 1524.5;
 }
 
-// === Puppeteer парсер ===
-async function parseYamaya(date) {
-  const [year, month, day] = date.split("-").map(Number);
-  const url = `https://yamaya.ru/maya/choosedate/?action=setOwnDate&formday=${day}&formmonth=${month}&formyear=${year}`;
-  let browser, page;
-  try {
-    browser = await puppeteer.launch({ args: ["--no-sandbox"] });
-    page = await browser.newPage();
-    await page.goto(url, { waitUntil: "domcontentloaded" });
-    const kin = await page.$eval(".result__kin .val", el => el.innerText.trim());
-    return parseInt(kin) || null;
-  } catch (e) {
-    console.error("[Parser error]", e.message);
-    return null;
-  } finally {
-    if (browser) await browser.close();
+function countSkippedDays(startYear, targetYear, month, day) {
+  let leap = 0, doot = 0;
+  for (let y = startYear + 1; y <= targetYear; y++) {
+    if (isLeapYear(y)) { if (y < targetYear || (y === targetYear && month > 2)) leap++; }
   }
+  for (let y = startYear + 1; y <= targetYear; y++) {
+    if (y < targetYear || (y === targetYear && (month > 7 || (month === 7 && day > 25)))) doot++;
+  }
+  return leap + doot;
 }
 
-// === API ===
-app.get("/calculate-kin", async (req, res) => {
-  const dateStr = req.query.date;
-  if (!dateStr) return res.status(400).json({ error: "Укажи ?date=YYYY-MM-DD" });
+function isLeapYear(y) { return (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)); }
 
-  const parserKin = await parseYamaya(dateStr);
-
-  const [year, month, day] = dateStr.split("-").map(Number);
+function localKin(year, month, day) {
   const jd = gregorianToJD(year, month, day);
   const jdEpoch = gregorianToJD(1987, 7, 26);
   const daysSinceEpoch = Math.floor(jd - jdEpoch);
-
-  const kinRaw = (((34 + daysSinceEpoch - 1) % 260) + 260) % 260;
-  const kin = kinRaw === 0 ? 260 : kinRaw;
+  const skipped = countSkippedDays(1987, year, month, day);
+  let kin = ((34 + daysSinceEpoch - skipped - 1) % 260) + 1;
+  if (kin <= 0) kin += 260;
   const tone = ((kin - 1) % 13) + 1;
-  const seal = SEALS_RU[((kin - 1) % 20)] || {};
+  const seal = ((kin - 1) % 20) + 1;
+  return { kin, tone, seal };
+}
 
+// === PARSER ===
+async function getYamayaData(year, month, day) {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox"]
+  });
+  const page = await browser.newPage();
+  await page.setUserAgent("Mozilla/5.0");
+  const url = `https://yamaya.ru/maya/choosedate/?action=setOwnDate&formday=${day}&formmonth=${month}&formyear=${year}`;
+  await page.goto(url, { waitUntil: "networkidle2", timeout: 40000 });
+  await page.waitForTimeout(2000);
+  const html = await page.content();
+  const kinMatch = html.match(/Кин:\s*<\/b>\s*(\d+)/);
+  const toneMatch = html.match(/Тон:\s*<\/b>\s*([^<]+)/);
+  const sealMatch = html.match(/Печать:\s*<\/b>\s*([^<]+)/);
+  const kin = kinMatch ? parseInt(kinMatch[1], 10) : null;
+  const tone = toneMatch ? toneMatch[1].trim() : null;
+  const seal = sealMatch ? sealMatch[1].trim() : null;
+  await browser.close();
+  if (kin && tone && seal) { return { kin, tone, seal }; }
+  else { return null; }
+}
+
+// === ROUTE ===
+app.get("/calculate-kin", async (req, res) => {
+  const dateStr = req.query.date;
+  if (!dateStr) return res.status(400).json({ error: "Use ?date=YYYY-MM-DD" });
+  const [year, month, day] = dateStr.split("-").map(Number);
+  let fromParser = null;
+  try { fromParser = await getYamayaData(year, month, day); }
+  catch (e) { console.error("Parser failed:", e.message); }
+  const local = localKin(year, month, day);
+  const finalSealIndex = (fromParser?.seal)
+    ? SEALS_RU.findIndex(s => s.short.includes(fromParser.seal)) + 1
+    : local.seal;
+  const sealData = SEALS_RU[finalSealIndex - 1];
   res.json({
     input: dateStr,
-    fromParser: parserKin,
-    kin: parserKin || kin,
-    tone: tone,
-    seal: seal
+    fromParser,
+    kin: fromParser?.kin || local.kin,
+    tone: fromParser?.tone || local.tone,
+    seal: sealData
   });
 });
 
+// === ROOT ===
 app.get("/", (req, res) => {
-  res.send("✨ Maya Kin API. Используй: /calculate-kin?date=YYYY-MM-DD");
+  res.send("✨ Maya Kin API — use /calculate-kin?date=YYYY-MM-DD");
 });
 
+// === START ===
 app.listen(port, () => {
-  console.log(`✅ Maya Kin API запущен на ${port}`);
+  console.log(`✅ Server running on port ${port}`);
 });
