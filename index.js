@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// === 1) JD ===
+// === 1) Gregorian → JD ===
 function gregorianToJD(year, month, day) {
   if (month <= 2) {
     year -= 1;
@@ -15,47 +15,9 @@ function gregorianToJD(year, month, day) {
        + day + B - 1524.5;
 }
 
-// === 2) Days Out Of Time + Leap Day ===
-function countSpecialDays(year, month, day) {
-  // Dreamspell starts 1987-07-26 with Kin 34
-  const startYear = 1987;
-  let leapDays = 0;
-  let dootDays = 0;
-
-  if (year >= startYear) {
-    for (let y = startYear + 1; y <= year; y++) {
-      // count leap day only if 29 Feb already passed
-      if (isLeapYear(y) && (y < year || (month > 2))) {
-        leapDays++;
-      }
-      // count Day Out of Time only if 25 July of this year has passed
-      if (y < year || (month > 7 || (month === 7 && day > 25))) {
-        dootDays++;
-      }
-    }
-  } else {
-    for (let y = year + 1; y <= startYear; y++) {
-      // retroactively same rule
-      if (isLeapYear(y) && (y > year || (month <= 2))) {
-        leapDays++;
-      }
-      if (y > year || (month <= 7 || (month === 7 && day <= 25))) {
-        dootDays++;
-      }
-    }
-    dootDays *= -1;
-    leapDays *= -1;
-  }
-  return leapDays + dootDays;
-}
-
-function isLeapYear(y) {
-  return (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0));
-}
-
-// === 3) SEALS ===
+// === 2) Твои SEALS ===
 const SEALS_RU = [
-  {
+    {
       "name": "Красный Дракон (Имиш)",
       "short": "Красный Дракон",
       "desc": "Рождение. Бытие. Питание. Память. Откройся энергиям Рождения и Упования, высшей веры во всемогущество бытия, и пусть они выражают себя в твоей жизни. Фокусируйся как на самостоятельности, так и на благодарном принятии необходимого питания от Вселенной. Только так жизнь поможет тебе осуществить твои глубинные потребности. Позволь энергии рождения инициировать и претворять в жизнь все твои начинания!",
@@ -237,20 +199,21 @@ const SEALS_RU = [
     }
 ];
 
-// === 4) Main Route ===
+// === 3) Основной маршрут ===
 app.get('/calculate-kin', (req, res) => {
   const dateStr = req.query.date;
   if (!dateStr) return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
 
   const [year, month, day] = dateStr.split('-').map(Number);
 
-  // JD только для Days diff
   const jdInput = gregorianToJD(year, month, day);
-  const jdEpoch = gregorianToJD(1987, 7, 26);
-  const days = Math.floor(jdInput - jdEpoch);
+  const jdEpoch = gregorianToJD(1987, 7, 26); // Dreamspell Epoch: 26 июля 1987
+  const daysSinceEpoch = Math.floor(jdInput - jdEpoch);
 
-  // Главный Dreamspell Kin
-  const kinNumber = ((days + 34 - 1) % 260 + 260) % 260 + 1;
+  const KIN_EPOCH = 34; // Dreamspell эталон Kin на дату Epoch
+  const CUSTOM_SHIFT = 1; // Настроено под yamaya.ru
+
+  const kinNumber = ((daysSinceEpoch + KIN_EPOCH - 1 + CUSTOM_SHIFT) % 260 + 260) % 260 + 1;
   const toneNumber = ((kinNumber - 1) % 13) + 1;
   const sealIndex = ((kinNumber - 1) % 20);
   const sealData = SEALS_RU[sealIndex];
@@ -259,19 +222,19 @@ app.get('/calculate-kin', (req, res) => {
     input: dateStr,
     jd: jdInput,
     jdEpoch,
-    daysSinceEpoch: days,
+    daysSinceEpoch,
     kin: kinNumber,
     tone: toneNumber,
     seal: sealData
   });
 });
 
-
-// === 5) Root ===
+// === 4) Корень ===
 app.get('/', (req, res) => {
-  res.send('✨ Dreamspell Kin API — используй ?date=YYYY-MM-DD');
+  res.send('✨ Kin Calculator API: добавь ?date=YYYY-MM-DD');
 });
 
+// === 5) Старт ===
 app.listen(port, () => {
-  console.log(`✅ Dreamspell Kin API on port ${port}`);
+  console.log(`✅ Kin Calculator API на порту ${port}`);
 });
