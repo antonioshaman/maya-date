@@ -40,19 +40,11 @@ async function parseYamaya(year, month, day) {
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
 
-  // Надёжный XPath
-  const kinElement = await page.locator(`xpath=//*[contains(text(),'Кин:')]`).first();
-  const kinText = await kinElement.evaluate(node => node.nextSibling ? node.nextSibling.textContent : null);
-
-  const toneElement = await page.locator(`xpath=//*[contains(text(),'Тон')]`).first();
-  const toneText = await toneElement.evaluate(node => node.nextSibling ? node.nextSibling.textContent : null);
-
-  const sealElement = await page.locator(`xpath=//*[contains(text(),'Печать')]`).first();
-  const sealText = await sealElement.evaluate(node => node.nextSibling ? node.nextSibling.textContent : null);
+  const kinText = await page.textContent('xpath=//b[contains(text(),"Кин:")]/following-sibling::text()[1]');
+  const toneText = await page.textContent('xpath=//b[contains(text(),"Тон")]/following-sibling::text()[1]');
+  const sealText = await page.textContent('xpath=//b[contains(text(),"Печать")]/following-sibling::text()[1]');
 
   await browser.close();
-
-  console.log("🔍 Kin:", kinText, "Tone:", toneText, "Seal:", sealText);
 
   return {
     kin: kinText ? parseInt(kinText.trim()) : null,
