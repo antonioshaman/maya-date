@@ -35,16 +35,14 @@ app.get("/calculate-kin", async (req, res) => {
   if (!dateStr) return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
 
   const [year, month, day] = dateStr.split("-").map(Number);
-
-  // 1️⃣ Локальный расчёт (резерв)
   const fromCalculation = calculateKin(year, month, day);
 
-  // 2️⃣ Запрос к Python
   let fromParser = null;
   try {
-    const pyRes = await axios.get(`https://parse-yamaya-production.up.railway.app/parse-yamaya?date=${dateStr}`, {
-      timeout: 20000
-    });
+    const pyRes = await axios.get(
+      `https://parse-yamaya-production.up.railway.app/parse-yamaya?date=${dateStr}`,
+      { timeout: 20000 }
+    );
     fromParser = pyRes.data;
   } catch (err) {
     console.error("❌ Ошибка Python:", err.message);
