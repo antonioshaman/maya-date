@@ -33,26 +33,39 @@ function calculateKin(year, month, day) {
 app.get("/calculate-kin", async (req, res) => {
   const dateStr = req.query.date;
   if (!dateStr) return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
+
   const [year, month, day] = dateStr.split("-").map(Number);
 
   // Fallback local calculation
   const fromCalculation = calculateKin(year, month, day);
 
-  // Call Python for parsing
-  const py = spawn("python3", ["parse_yamaya.py", year, month, day]);
-  let data = "";
-  py.stdout.on("data", (chunk) => { data += chunk; });
-  py.stderr.on("data", (err) => console.error(`PyErr: ${err}`));
+  // Call Python for parsing (date string!)
+  const py = spawn("python3", ["parse_yamaya.py", dateStr]);
+
+  let output = "";
+  py.stdout.on("data", (chunk) => { output += chunk; });
+
+  py.stderr.on("data", (err) => console.error(`Python error: ${err}`));
+
   py.on("close", (code) => {
     let fromParser = null;
-    try { fromParser = JSON.parse(data); } catch (e) { console.error(e); }
-    res.json({ input: dateStr, fromParser, fromCalculation });
+    try {
+      fromParser = JSON.parse(output);
+    } catch (e) {
+      console.error("Parser JSON error:", e);
+    }
+
+    res.json({
+      input: dateStr,
+      fromParser,
+      fromCalculation
+    });
   });
 });
 
 // === Root ===
 app.get("/", (req, res) => {
-  res.send("✨ Maya Kin API — Node+Python version");
+  res.send("✨ Maya Kin API — Node + Python version (playwright parsing)");
 });
 
 // === Start ===
