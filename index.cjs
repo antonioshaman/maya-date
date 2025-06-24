@@ -20,12 +20,9 @@ function calculateKin(year, month, day) {
   const jd = gregorianToJD(year, month, day);
   const jdEpoch = gregorianToJD(1987, 7, 26);
   const daysSinceEpoch = Math.floor(jd - jdEpoch);
-
-  // ✅ Без отрицательных
-  const kinNumber = ((daysSinceEpoch + 34 - 1) % 260 + 260) % 260 + 1;
+  const kinNumber = ((daysSinceEpoch + 34 - 1) % 260) + 1;
   const tone = ((kinNumber - 1) % 13) + 1;
   const sealIndex = ((kinNumber - 1) % 20);
-
   return {
     kin: kinNumber,
     tone,
@@ -36,36 +33,32 @@ function calculateKin(year, month, day) {
 // === Playwright parser ===
 async function parseYamaya(year, month, day) {
   const url = `https://yamaya.ru/maya/choosedate/?action=setOwnDate&formday=${day}&formmonth=${month}&formyear=${year}`;
-
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
-
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
 
-  // Ждём появления текста
-  await page.waitForFunction(() => {
-    return [...document.querySelectorAll('b')].some(b => b.textContent.includes('Кин:'));
-  }, { timeout: 60000 });
+  // Надёжный XPath
+  const kinElement = await page.locator(`xpath=//*[contains(text(),'Кин:')]`).first();
+  const kinText = await kinElement.evaluate(node => node.nextSibling ? node.nextSibling.textContent : null);
 
-  const data = await page.evaluate(() => {
-    const bTags = [...document.querySelectorAll('b')];
-    const kinTag = bTags.find(b => b.textContent.includes('Кин:'));
-    const kin = kinTag ? parseInt(kinTag.nextSibling.textContent.trim()) : null;
+  const toneElement = await page.locator(`xpath=//*[contains(text(),'Тон')]`).first();
+  const toneText = await toneElement.evaluate(node => node.nextSibling ? node.nextSibling.textContent : null);
 
-    const toneTag = bTags.find(b => b.textContent.includes('Тон'));
-    const tone = toneTag ? toneTag.nextSibling.textContent.trim() : null;
-
-    const sealTag = bTags.find(b => b.textContent.includes('Печать'));
-    const seal = sealTag ? sealTag.nextSibling.textContent.trim() : null;
-
-    return { kin, tone, seal };
-  });
+  const sealElement = await page.locator(`xpath=//*[contains(text(),'Печать')]`).first();
+  const sealText = await sealElement.evaluate(node => node.nextSibling ? node.nextSibling.textContent : null);
 
   await browser.close();
-  return data;
+
+  console.log("🔍 Kin:", kinText, "Tone:", toneText, "Seal:", sealText);
+
+  return {
+    kin: kinText ? parseInt(kinText.trim()) : null,
+    tone: toneText ? toneText.trim() : null,
+    seal: sealText ? sealText.trim() : null,
+  };
 }
 
 // === API ===
