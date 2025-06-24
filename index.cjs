@@ -1,5 +1,5 @@
 const express = require("express");
-const { spawn } = require("child_process");
+const axios = require("axios");
 const SEALS_RU = require("./seals_ru.json");
 
 const app = express();
@@ -29,46 +29,40 @@ function calculateKin(year, month, day) {
   };
 }
 
-// === Express endpoint ===
+// === Основной эндпоинт ===
 app.get("/calculate-kin", async (req, res) => {
   const dateStr = req.query.date;
   if (!dateStr) return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
 
   const [year, month, day] = dateStr.split("-").map(Number);
 
-  // Fallback local calculation
+  // 1️⃣ Локальный расчёт (резерв)
   const fromCalculation = calculateKin(year, month, day);
 
-  // Call Python for parsing (date string!)
-  const py = spawn("python3", ["parse_yamaya.py", dateStr]);
-
-  let output = "";
-  py.stdout.on("data", (chunk) => { output += chunk; });
-
-  py.stderr.on("data", (err) => console.error(`Python error: ${err}`));
-
-  py.on("close", (code) => {
-    let fromParser = null;
-    try {
-      fromParser = JSON.parse(output);
-    } catch (e) {
-      console.error("Parser JSON error:", e);
-    }
-
-    res.json({
-      input: dateStr,
-      fromParser,
-      fromCalculation
+  // 2️⃣ Запрос к Python
+  let fromParser = null;
+  try {
+    const pyRes = await axios.get(`https://parse-yamaya-production.up.railway.app/parse-yamaya?date=${dateStr}`, {
+      timeout: 20000
     });
+    fromParser = pyRes.data;
+  } catch (err) {
+    console.error("❌ Ошибка Python:", err.message);
+  }
+
+  res.json({
+    input: dateStr,
+    fromParser,
+    fromCalculation
   });
 });
 
-// === Root ===
+// === Корень ===
 app.get("/", (req, res) => {
-  res.send("✨ Maya Kin API — Node + Python version (playwright parsing)");
+  res.send("✨ Maya Kin API — Node + Python связка");
 });
 
-// === Start ===
+// === Запуск ===
 app.listen(port, () => {
-  console.log(`✅ Node server running on port ${port}`);
+  console.log(`✅ Node сервер запущен на порту ${port}`);
 });
