@@ -15,17 +15,45 @@ function gregorianToJD(year, month, day) {
        + day + B - 1524.5;
 }
 
-// === 2) Days Out Of Time ===
-function countDaysOutOfTime(startYear, targetYear, month, day) {
-  let count = 0;
-  for (let y = startYear; y < targetYear; y++) {
-    if (month > 7 || (month === 7 && day > 25)) {
-      count++;
+// === 2) Days Out Of Time + Leap Day ===
+function countSpecialDays(year, month, day) {
+  // Dreamspell starts 1987-07-26 with Kin 34
+  const startYear = 1987;
+  let leapDays = 0;
+  let dootDays = 0;
+
+  if (year >= startYear) {
+    for (let y = startYear + 1; y <= year; y++) {
+      // count leap day only if 29 Feb already passed
+      if (isLeapYear(y) && (y < year || (month > 2))) {
+        leapDays++;
+      }
+      // count Day Out of Time only if 25 July of this year has passed
+      if (y < year || (month > 7 || (month === 7 && day > 25))) {
+        dootDays++;
+      }
     }
+  } else {
+    for (let y = year + 1; y <= startYear; y++) {
+      // retroactively same rule
+      if (isLeapYear(y) && (y > year || (month <= 2))) {
+        leapDays++;
+      }
+      if (y > year || (month <= 7 || (month === 7 && day <= 25))) {
+        dootDays++;
+      }
+    }
+    dootDays *= -1;
+    leapDays *= -1;
   }
-  return count;
+  return leapDays + dootDays;
 }
 
+function isLeapYear(y) {
+  return (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0));
+}
+
+// === 3) SEALS ===
 const SEALS_RU = [
   {
       "name": "Красный Дракон (Имиш)",
@@ -217,22 +245,26 @@ app.get('/calculate-kin', (req, res) => {
   const [year, month, day] = dateStr.split('-').map(Number);
   const jd = gregorianToJD(year, month, day);
 
-  const correlation = 584283; // Или +1 или +2 если нужно идеально подогнать yamaya.ru
-  const startYear = -3113;
+  const correlation = 584283;
 
-  const daysOutOfTime = countDaysOutOfTime(startYear, year, month, day);
-  const daysSinceCreation = Math.floor(jd - correlation) - daysOutOfTime;
+  // Академический Long Count
+  const kinAcad = ((Math.floor(jd - correlation) % 260) + 260) % 260 + 1;
 
-  const kinNumber = ((daysSinceCreation % 260) + 260) % 260 + 1;
+  // Days Out Of Time + Leap day
+  const shift = countSpecialDays(year, month, day);
+
+  // Dreamspell = академический - shift
+  let kinNumber = ((kinAcad - shift - 1) % 260 + 260) % 260 + 1;
   const toneNumber = ((kinNumber - 1) % 13) + 1;
   const sealIndex = ((kinNumber - 1) % 20);
   const sealData = SEALS_RU[sealIndex];
 
   res.json({
     input: dateStr,
-    jd,
-    daysSinceCreation,
-    daysOutOfTime,
+    jd: jd,
+    correlation,
+    kinAcad,
+    shift,
     kin: kinNumber,
     tone: toneNumber,
     seal: sealData
@@ -241,9 +273,9 @@ app.get('/calculate-kin', (req, res) => {
 
 // === 5) Root ===
 app.get('/', (req, res) => {
-  res.send('✨ Maya Kin API — используй ?date=YYYY-MM-DD');
+  res.send('✨ Dreamspell Kin API — используй ?date=YYYY-MM-DD');
 });
 
 app.listen(port, () => {
-  console.log(`✅ Maya Kin API on port ${port}`);
+  console.log(`✅ Dreamspell Kin API on port ${port}`);
 });
