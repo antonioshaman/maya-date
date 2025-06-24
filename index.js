@@ -109,7 +109,7 @@ async function parseYamaya(dateStr) {
 /**
  * Основной эндпоинт
  */
-app.get('/calculate', async (req, res) => {
+app.get('/calculate-kin', async (req, res) => {
   const dateStr = req.query.date;
   if (!dateStr) return res.status(400).json({ error: "❌ Укажи ?date=YYYY-MM-DD" });
 
@@ -136,7 +136,7 @@ app.get('/calculate', async (req, res) => {
  * Ping
  */
 app.get('/', (req, res) => {
-  res.send('✨ Kin Calculator API with Yamaya check — используй /calculate?date=YYYY-MM-DD');
+  res.send('✨ Kin Calculator API with Yamaya check — используй /calculate-kin?date=YYYY-MM-DD');
 });
 
 /**
