@@ -1,11 +1,13 @@
-import express from 'express';
-import fetch from 'node-fetch';
-import cheerio from 'cheerio';
+// === index.js ===
+
+const express = require('express');
+const fetch = require('node-fetch');
+const cheerio = require('cheerio');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// ⏳ ФУНКЦИЯ JD
+// JD
 function gregorianToJD(year, month, day) {
   if (month <= 2) { year -= 1; month += 12; }
   const A = Math.floor(year / 100);
@@ -15,7 +17,6 @@ function gregorianToJD(year, month, day) {
        + day + B - 1524.5;
 }
 
-// ✅ ВСТАВЬ ВОТ ЗДЕСЬ ВЕСЬ ТВОЙ SEALS_RU
 const SEALS_RU = [
     {
       "name": "Красный Дракон (Имиш)",
@@ -199,14 +200,14 @@ const SEALS_RU = [
     }
 ];
 
-// 🚀 Маршрут
+// 🚀 Route
 app.get('/calculate-kin', async (req, res) => {
   const dateStr = req.query.date;
   if (!dateStr) return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
 
   const [year, month, day] = dateStr.split('-').map(Number);
 
-  // 1) Пробуем yamaya.ru
+  // 1️⃣ Пробуем yamaya
   try {
     const yamayaURL = `https://yamaya.ru/maya/choosedate/?action=setOwnDate&formday=${day}&formmonth=${month}&formyear=${year}`;
     const response = await fetch(yamayaURL);
@@ -235,7 +236,7 @@ app.get('/calculate-kin', async (req, res) => {
     console.log("yamaya.ru парсер упал:", err);
   }
 
-  // 2) fallback — свой JD и твой SEALS_RU
+  // 2️⃣ fallback — JD + SEALS
   const jd = gregorianToJD(year, month, day);
   const jdEpoch = gregorianToJD(1987, 7, 26);
   const daysSinceEpoch = Math.floor(jd - jdEpoch);
@@ -250,15 +251,13 @@ app.get('/calculate-kin', async (req, res) => {
   res.json({
     source: "local",
     date: dateStr,
-    jd,
-    daysSinceEpoch,
     kin,
     tone,
     seal: sealData
   });
 });
 
-// Пинг
+// ✅ Ping
 app.get('/', (req, res) => {
   res.send('✨ Maya Kin API — use /calculate-kin?date=YYYY-MM-DD');
 });
