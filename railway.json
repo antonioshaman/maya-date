@@ -1,0 +1,16 @@
+{
+  "build": {
+    "nixpacks": {
+      "plan": {
+        "providers": ["node"]
+      }
+    }
+  },
+  "deploy": {
+    "startCommand": "node index.js"
+  },
+  "plugins": [],
+  "env": {
+    "PLAYWRIGHT_BROWSERS_PATH": "0"
+  }
+}
