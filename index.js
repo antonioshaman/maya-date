@@ -217,7 +217,7 @@ app.get('/calculate-kin', (req, res) => {
   const [year, month, day] = dateStr.split('-').map(Number);
   const jd = gregorianToJD(year, month, day);
 
-  const correlation = 584285; // Или +1 или +2 если нужно идеально подогнать yamaya.ru
+  const correlation = 584283; // Или +1 или +2 если нужно идеально подогнать yamaya.ru
   const startYear = -3113;
 
   const daysOutOfTime = countDaysOutOfTime(startYear, year, month, day);
