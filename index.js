@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// === 1) Gregorian → JD ===
+// === JD ===
 function gregorianToJD(year, month, day) {
   if (month <= 2) {
     year -= 1;
@@ -15,7 +15,7 @@ function gregorianToJD(year, month, day) {
        + day + B - 1524.5;
 }
 
-// === 2) Твои SEALS ===
+// === SEALS_RU ===
 const SEALS_RU = [
     {
       "name": "Красный Дракон (Имиш)",
@@ -199,46 +199,61 @@ const SEALS_RU = [
     }
 ];
 
-// === 3) Основной маршрут ===
+// === Calculate Dreamspell Kin ===
 app.get('/calculate-kin', (req, res) => {
   const dateStr = req.query.date;
   if (!dateStr) return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
 
-  const [year, month, day] = dateStr.split('-').map(Number);
+  const [y, m, d] = dateStr.split('-').map(Number);
 
-  const jdInput = gregorianToJD(year, month, day);
-  const jdEpoch = gregorianToJD(1987, 7, 26); // Dreamspell Epoch: 26 июля 1987
-  const daysSinceEpoch = Math.floor(jdInput - jdEpoch);
+  const jdDate = gregorianToJD(y, m, d);
+  const jdStart = gregorianToJD(1987, 7, 26); // старт Dreamspell
 
-  const KIN_EPOCH = 34; // Dreamspell эталон Kin на дату Epoch
-  const CUSTOM_SHIFT = 1; // Настроено под yamaya.ru
+  let rawDays = Math.floor(jdDate - jdStart);
 
-  const kinNumber = ((daysSinceEpoch + KIN_EPOCH - 1 + CUSTOM_SHIFT) % 260 + 260) % 260 + 1;
-  const toneNumber = ((kinNumber - 1) % 13) + 1;
-  const sealIndex = ((kinNumber - 1) % 20);
-  const sealData = SEALS_RU[sealIndex];
+  // === DOVT ===
+  let doot = 0;
+  for (let year = 1988; year <= y; year++) {
+    if (year === y && (m < 7 || (m === 7 && d < 25))) break;
+    doot++;
+  }
+
+  // === Leap Days ===
+  let leap = 0;
+  for (let year = 1988; year <= y; year++) {
+    if (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) {
+      if (year === y && (m < 2 || (m === 2 && d < 29))) continue;
+      leap++;
+    }
+  }
+
+  // === Dreamspell Kin ===
+  const trueDays = rawDays - doot - leap;
+  let kin = ((34 + trueDays - 1) % 260) + 1;
+  if (kin <= 0) kin += 260;
+
+  const tone = ((kin - 1) % 13) + 1;
+  const sealIndex = ((kin - 1) % 20);
+  const seal = SEALS_RU[sealIndex] || {};
 
   res.json({
     input: dateStr,
-    jd: jdInput,
-    jdEpoch,
-    daysSinceEpoch,
-    kin: kinNumber,
-    tone: toneNumber,
-    seal: sealData
+    jdDate,
+    jdStart,
+    rawDays,
+    doot,
+    leap,
+    kin,
+    tone,
+    seal
   });
 });
 
-// === 4) Корень ===
+// === Root ===
 app.get('/', (req, res) => {
-  res.send('✨ Kin Calculator API: добавь ?date=YYYY-MM-DD');
+  res.send('✨ Dreamspell Kin API — ?date=YYYY-MM-DD');
 });
 
-// === 5) Старт ===
 app.listen(port, () => {
-  console.log(`✅ Kin Calculator API на порту ${port}`);
+  console.log(`✅ Dreamspell Kin API запущен на ${port}`);
 });
-
-app.use('/ai-plugin.json', express.static('./ai-plugin.json'));
-app.use('/openapi.json', express.static('./openapi.json'));
-
