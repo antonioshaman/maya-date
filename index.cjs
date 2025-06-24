@@ -20,9 +20,12 @@ function calculateKin(year, month, day) {
   const jd = gregorianToJD(year, month, day);
   const jdEpoch = gregorianToJD(1987, 7, 26);
   const daysSinceEpoch = Math.floor(jd - jdEpoch);
-  const kinNumber = ((daysSinceEpoch + 34 - 1) % 260) + 1;
+
+  // ✅ Без отрицательных
+  const kinNumber = ((daysSinceEpoch + 34 - 1) % 260 + 260) % 260 + 1;
   const tone = ((kinNumber - 1) % 13) + 1;
   const sealIndex = ((kinNumber - 1) % 20);
+
   return {
     kin: kinNumber,
     tone,
@@ -36,14 +39,16 @@ async function parseYamaya(year, month, day) {
 
   const browser = await chromium.launch({
     headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
-  const page = await browser.newPage();
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
 
-  // Ждём любой элемент с "Кин:"
+  const page = await browser.newPage();
+  await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
+
+  // Ждём появления текста
   await page.waitForFunction(() => {
-    return [...document.querySelectorAll('b')].some(el => el.textContent.includes('Кин:'));
-  });
+    return [...document.querySelectorAll('b')].some(b => b.textContent.includes('Кин:'));
+  }, { timeout: 60000 });
 
   const data = await page.evaluate(() => {
     const bTags = [...document.querySelectorAll('b')];
