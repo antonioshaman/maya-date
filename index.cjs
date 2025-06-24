@@ -1,11 +1,11 @@
 const express = require('express');
-const { chromium } = require('playwright');
+const { chromium } = require('playwright'); // теперь playwright!
 const SEALS_RU = require('./seals_ru.json');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// === Gregorian to JD ===
+// === JD ===
 function gregorianToJD(year, month, day) {
   if (month <= 2) { year -= 1; month += 12; }
   const A = Math.floor(year / 100);
@@ -15,7 +15,7 @@ function gregorianToJD(year, month, day) {
     + day + B - 1524.5;
 }
 
-// === Local Dreamspell calculation ===
+// === Local Kin ===
 function calculateKin(year, month, day) {
   const jd = gregorianToJD(year, month, day);
   const jdEpoch = gregorianToJD(1987, 7, 26);
@@ -30,7 +30,7 @@ function calculateKin(year, month, day) {
   };
 }
 
-// === Playwright parser ===
+// === Playwright Parser ===
 async function parseYamaya(year, month, day) {
   const url = `https://yamaya.ru/maya/choosedate/?action=setOwnDate&formday=${day}&formmonth=${month}&formyear=${year}`;
   const browser = await chromium.launch({
@@ -40,16 +40,19 @@ async function parseYamaya(year, month, day) {
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
 
-  const kinText = await page.textContent('xpath=//b[contains(text(),"Кин:")]/following-sibling::text()[1]');
-  const toneText = await page.textContent('xpath=//b[contains(text(),"Тон")]/following-sibling::text()[1]');
-  const sealText = await page.textContent('xpath=//b[contains(text(),"Печать")]/following-sibling::text()[1]');
+  // Используем brute-force через полный innerText
+  const bodyText = await page.locator('body').innerText();
 
   await browser.close();
 
+  const kinMatch = bodyText.match(/Кин:\s*(\d+)/);
+  const toneMatch = bodyText.match(/Тон.*?:\s*([^\n]+)/);
+  const sealMatch = bodyText.match(/Печать.*?:\s*([^\n]+)/);
+
   return {
-    kin: kinText ? parseInt(kinText.trim()) : null,
-    tone: toneText ? toneText.trim() : null,
-    seal: sealText ? sealText.trim() : null,
+    kin: kinMatch ? parseInt(kinMatch[1]) : null,
+    tone: toneMatch ? toneMatch[1].trim() : null,
+    seal: sealMatch ? sealMatch[1].trim() : null,
   };
 }
 
