@@ -1,9 +1,9 @@
-const express = require("express");
-const { chromium } = require("playwright");
+import express from "express";
+import { chromium } from "playwright";
 const app = express();
 const port = process.env.PORT || 3000;
 
-// === 1) JD util ===
+// === 1) JD ===
 function gregorianToJD(year, month, day) {
   if (month <= 2) { year--; month += 12; }
   const A = Math.floor(year / 100);
@@ -13,7 +13,7 @@ function gregorianToJD(year, month, day) {
        + day + B - 1524.5;
 }
 
-// === 2) SEALS TABLE ===
+// === 2) SEALS ===
 const SEALS_RU = [
     {
       "name": "Красный Дракон (Имиш)",
@@ -197,57 +197,51 @@ const SEALS_RU = [
     }
 ];
 
-// === 3) CORE ===
+// === 3) Endpoint ===
 app.get("/calculate-kin", async (req, res) => {
   const dateStr = req.query.date;
   if (!dateStr) return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
-  const [year, month, day] = dateStr.split("-").map(Number);
 
+  const [year, month, day] = dateStr.split("-").map(Number);
   let parsed = null;
 
   try {
-    const browser = await chromium.launch({
-      headless: true,
-    });
+    const browser = await chromium.launch();
     const page = await browser.newPage();
     const url = `https://yamaya.ru/maya/choosedate/?action=setOwnDate&formday=${day}&formmonth=${month}&formyear=${year}`;
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
 
-    // Ждём элемент Кина
     const kinText = await page.locator("text=/Кин:/").first().textContent({ timeout: 5000 });
     const kinMatch = kinText ? kinText.match(/Кин:\s*(\d+)/) : null;
 
     if (kinMatch) {
-      parsed = {
-        kin: parseInt(kinMatch[1]),
-      };
+      parsed = { kin: parseInt(kinMatch[1]) };
     }
 
     await browser.close();
-  } catch (e) {
-    console.error("Парсер не ответил:", e.message);
+  } catch (err) {
+    console.error("Парсер не ответил:", err.message);
   }
 
-  // === Если парсер не дал Кин — локальный расчёт ===
+  // fallback
   const jd = gregorianToJD(year, month, day);
   const jdEpoch = gregorianToJD(1987, 7, 26);
   const daysSinceEpoch = Math.floor(jd - jdEpoch);
   const kinLocal = ((34 + daysSinceEpoch - 1) % 260) + 1;
   const tone = ((kinLocal - 1) % 13) + 1;
-  const sealIndex = ((kinLocal - 1) % 20);
-  const seal = SEALS_RU[sealIndex] || {};
+  const seal = SEALS_RU[((kinLocal - 1) % 20)] || {};
 
   res.json({
     input: dateStr,
     fromParser: parsed,
     kin: parsed?.kin || kinLocal,
     tone: tone,
-    seal: seal,
+    seal: seal
   });
 });
 
 app.get("/", (req, res) => {
-  res.send("✨ Dreamspell Kin API — используйте ?date=YYYY-MM-DD");
+  res.send("✨ Dreamspell Kin API — ?date=YYYY-MM-DD");
 });
 
 app.listen(port, () => {
