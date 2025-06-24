@@ -1,5 +1,5 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
+const { chromium } = require('playwright');
 const SEALS_RU = require('./seals_ru.json');
 
 const app = express();
@@ -30,30 +30,37 @@ function calculateKin(year, month, day) {
   };
 }
 
-// === Puppeteer parse ===
+// === Playwright parser ===
 async function parseYamaya(year, month, day) {
   const url = `https://yamaya.ru/maya/choosedate/?action=setOwnDate&formday=${day}&formmonth=${month}&formyear=${year}`;
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox']
+
+  const browser = await chromium.launch({
+    headless: true,
   });
   const page = await browser.newPage();
-  await page.goto(url, { waitUntil: "networkidle2" });
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
 
-  const bodyText = await page.evaluate(() => document.body.innerText);
+  // Ждём любой элемент с "Кин:"
+  await page.waitForFunction(() => {
+    return [...document.querySelectorAll('b')].some(el => el.textContent.includes('Кин:'));
+  });
+
+  const data = await page.evaluate(() => {
+    const bTags = [...document.querySelectorAll('b')];
+    const kinTag = bTags.find(b => b.textContent.includes('Кин:'));
+    const kin = kinTag ? parseInt(kinTag.nextSibling.textContent.trim()) : null;
+
+    const toneTag = bTags.find(b => b.textContent.includes('Тон'));
+    const tone = toneTag ? toneTag.nextSibling.textContent.trim() : null;
+
+    const sealTag = bTags.find(b => b.textContent.includes('Печать'));
+    const seal = sealTag ? sealTag.nextSibling.textContent.trim() : null;
+
+    return { kin, tone, seal };
+  });
 
   await browser.close();
-
-  const kinMatch = bodyText.match(/Кин:\s*(\d+)/);
-  const kin = kinMatch ? parseInt(kinMatch[1]) : null;
-
-  const toneMatch = bodyText.match(/Тон.*?:\s*(.*?)\n/);
-  const tone = toneMatch ? toneMatch[1].trim() : null;
-
-  const sealMatch = bodyText.match(/Печать.*?:\s*(.*?)\n/);
-  const seal = sealMatch ? sealMatch[1].trim() : null;
-
-  return { kin, tone, seal };
+  return data;
 }
 
 // === API ===
