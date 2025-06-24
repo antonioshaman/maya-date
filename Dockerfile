@@ -1,27 +1,26 @@
-# 1️⃣ Используем Python + Node вместе
-FROM python:3.11-slim
+# ✅ База: Playwright с Node и Python
+FROM mcr.microsoft.com/playwright:v1.44.0-jammy
 
-# 2️⃣ Устанавливаем Node.js
-RUN apt-get update && \
-    apt-get install -y curl && \
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs
-
-# 3️⃣ Создаём рабочую директорию
+# 📁 Рабочая директория
 WORKDIR /app
 
-# 4️⃣ Копируем файлы
-COPY . .
+# 🔑 Копируем package.json/package-lock.json для npm install отдельно
+COPY package*.json ./
 
-# 5️⃣ Устанавливаем Python зависимости
-RUN pip install playwright && python3 -m playwright install
-
-# 6️⃣ Устанавливаем Node зависимости
+# 📦 Устанавливаем Node зависимости
 RUN npm install
 
-# 7️⃣ Указываем порт
-ENV PORT=3000
+# 📁 Копируем всё остальное
+COPY . .
 
-# 8️⃣ Стартуем Node сервер
-CMD ["node", "index.cjs"]
+# 🐍 Обновляем pip и ставим Python Playwright
+RUN apt-get update && apt-get install -y python3-pip && \
+    pip3 install --upgrade pip && \
+    pip3 install playwright && \
+    python3 -m playwright install
 
+# ✅ Разрешаем порт
+EXPOSE 3000
+
+# 🚀 Стартуем
+CMD ["npm", "start"]
