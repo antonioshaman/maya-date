@@ -1,15 +1,11 @@
-// === index.js ===
-
-const express = require('express');
-const fetch = require('node-fetch');
-const cheerio = require('cheerio');
-
+const express = require("express");
+const { chromium } = require("playwright");
 const app = express();
 const port = process.env.PORT || 3000;
 
-// JD
+// === 1) JD util ===
 function gregorianToJD(year, month, day) {
-  if (month <= 2) { year -= 1; month += 12; }
+  if (month <= 2) { year--; month += 12; }
   const A = Math.floor(year / 100);
   const B = 2 - A + Math.floor(A / 4);
   return Math.floor(365.25 * (year + 4716))
@@ -17,6 +13,7 @@ function gregorianToJD(year, month, day) {
        + day + B - 1524.5;
 }
 
+// === 2) SEALS TABLE ===
 const SEALS_RU = [
     {
       "name": "Красный Дракон (Имиш)",
@@ -200,68 +197,59 @@ const SEALS_RU = [
     }
 ];
 
-// 🚀 Route
-app.get('/calculate-kin', async (req, res) => {
+// === 3) CORE ===
+app.get("/calculate-kin", async (req, res) => {
   const dateStr = req.query.date;
   if (!dateStr) return res.status(400).json({ error: "Укажи дату: ?date=YYYY-MM-DD" });
+  const [year, month, day] = dateStr.split("-").map(Number);
 
-  const [year, month, day] = dateStr.split('-').map(Number);
+  let parsed = null;
 
-  // 1️⃣ Пробуем yamaya
   try {
-    const yamayaURL = `https://yamaya.ru/maya/choosedate/?action=setOwnDate&formday=${day}&formmonth=${month}&formyear=${year}`;
-    const response = await fetch(yamayaURL);
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    const browser = await chromium.launch({
+      headless: true,
+    });
+    const page = await browser.newPage();
+    const url = `https://yamaya.ru/maya/choosedate/?action=setOwnDate&formday=${day}&formmonth=${month}&formyear=${year}`;
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
 
-    const textBlock = $('body').text();
-    const kinMatch = textBlock.match(/Кин:\s*(\d+)/);
-    const toneMatch = textBlock.match(/Тон\s*\d+:\s*([^\n]+)/);
-    const sealMatch = textBlock.match(/Печать\s*\d+:\s*([^\n]+)/);
+    // Ждём элемент Кина
+    const kinText = await page.locator("text=/Кин:/").first().textContent({ timeout: 5000 });
+    const kinMatch = kinText ? kinText.match(/Кин:\s*(\d+)/) : null;
 
-    const yamayaKin = kinMatch ? kinMatch[1].trim() : null;
-    const yamayaTone = toneMatch ? toneMatch[1].trim() : null;
-    const yamayaSeal = sealMatch ? sealMatch[1].trim() : null;
-
-    if (yamayaKin) {
-      return res.json({
-        source: "yamaya.ru",
-        date: dateStr,
-        kin: yamayaKin,
-        tone: yamayaTone,
-        seal: yamayaSeal
-      });
+    if (kinMatch) {
+      parsed = {
+        kin: parseInt(kinMatch[1]),
+      };
     }
-  } catch (err) {
-    console.log("yamaya.ru парсер упал:", err);
+
+    await browser.close();
+  } catch (e) {
+    console.error("Парсер не ответил:", e.message);
   }
 
-  // 2️⃣ fallback — JD + SEALS
+  // === Если парсер не дал Кин — локальный расчёт ===
   const jd = gregorianToJD(year, month, day);
   const jdEpoch = gregorianToJD(1987, 7, 26);
   const daysSinceEpoch = Math.floor(jd - jdEpoch);
-
-  let kin = ((34 + daysSinceEpoch - 1) % 260) + 1;
-  if (kin <= 0) kin += 260;
-
-  const tone = ((kin - 1) % 13) + 1;
-  const sealIndex = ((kin - 1) % 20);
-  const sealData = SEALS_RU[sealIndex];
+  const kinLocal = ((34 + daysSinceEpoch - 1) % 260) + 1;
+  const tone = ((kinLocal - 1) % 13) + 1;
+  const sealIndex = ((kinLocal - 1) % 20);
+  const seal = SEALS_RU[sealIndex] || {};
 
   res.json({
-    source: "local",
-    date: dateStr,
-    kin,
-    tone,
-    seal: sealData
+    input: dateStr,
+    fromParser: parsed,
+    kin: parsed?.kin || kinLocal,
+    tone: tone,
+    seal: seal,
   });
 });
 
-// ✅ Ping
-app.get('/', (req, res) => {
-  res.send('✨ Maya Kin API — use /calculate-kin?date=YYYY-MM-DD');
+app.get("/", (req, res) => {
+  res.send("✨ Dreamspell Kin API — используйте ?date=YYYY-MM-DD");
 });
 
 app.listen(port, () => {
-  console.log(`✅ Maya Kin API on port ${port}`);
+  console.log(`✅ API запущен на порту ${port}`);
 });
