@@ -19,14 +19,20 @@ function calculateKin(year, month, day) {
   const jd = gregorianToJD(year, month, day);
   const jdEpoch = gregorianToJD(1987, 7, 26);
   const daysSinceEpoch = Math.floor(jd - jdEpoch);
-  const kinNumber = ((daysSinceEpoch + 34 - 1) % 260) + 1;
-  const tone = ((kinNumber - 1) % 13) + 1;
-  const sealIndex = ((kinNumber - 1) % 20);
+
+  const KIN_EPOCH = 34;  // Dreamspell эталон
+  const kinNumber = mod(daysSinceEpoch + KIN_EPOCH - 1, 260) + 1;
+  const tone = mod(kinNumber - 1, 13) + 1;
+  const sealIndex = mod(kinNumber - 1, 20);
   return {
     kin: kinNumber,
     tone,
     seal: SEALS_RU[sealIndex],
   };
+}
+
+function mod(n, m) {
+  return ((n % m) + m) % m;
 }
 
 // === Основной эндпоинт ===
