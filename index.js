@@ -238,3 +238,7 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`✅ Kin Calculator API на порту ${port}`);
 });
+
+app.use('/ai-plugin.json', express.static('./ai-plugin.json'));
+app.use('/openapi.json', express.static('./openapi.json'));
+
