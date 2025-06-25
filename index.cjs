@@ -70,8 +70,8 @@ app.get("/calculate-kin", async (req, res) => {
 
   res.json({
     input: dateStr,
-    fromCalculation,
-    fromParser
+    fromParser,
+    fromCalculation
   });
 });
 
