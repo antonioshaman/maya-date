@@ -40,6 +40,7 @@ function calculateKin(year, month, day) {
 app.get("/calculate-kin", async (req, res) => {
   const dateStr = req.query.date;
 
+  // ⛔ Если параметр не указан
   if (!dateStr) {
     return res.status(200).send(`
       <h2>🌞 Maya Kin API</h2>
@@ -48,32 +49,34 @@ app.get("/calculate-kin", async (req, res) => {
       <p>Ответ будет содержать:</p>
       <ul>
         <li><b>input</b> — введённая дата</li>
-        <li><b>fromCalculation</b> — локальный расчёт по Dreamspell</li>
-        <li><b>fromParser</b> — данные с сайта yamaya.ru (если успешно)</li>
+        <li><b>source</b> — "parser" или "local"</li>
+        <li><b>kin</b> — результат</li>
       </ul>
     `);
   }
 
   const [year, month, day] = dateStr.split("-").map(Number);
-  const fromCalculation = calculateKin(year, month, day);
+  let source = "local";
+  let kin = calculateKin(year, month, day);
 
-  let fromParser = null;
   try {
     const pyRes = await axios.get(
       `https://parse-yamaya-production.up.railway.app/parse-yamaya?date=${dateStr}`,
       { timeout: 20000 }
     );
-    fromParser = pyRes.data;
+    kin = pyRes.data;
+    source = "parser";
   } catch (err) {
     console.error("❌ Ошибка Python:", err.message);
   }
 
   res.json({
     input: dateStr,
-    fromParser,
-    fromCalculation
+    source,
+    kin
   });
 });
+
 
 // === Корень /
 app.get("/", (req, res) => {
